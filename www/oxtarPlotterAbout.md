@@ -5,7 +5,7 @@ date: "2023-12-07"
 output: html_document
 ---
 
-![OxTAR](oxtaruklogo.png){#id .class width=70% height=70%}
+![OxTAR](oxtarplotterlogo.png){#id .class width=70% height=70%}
 
 ## OxTAR-UK: The Oxford National Thermal Ablation Registry
 
