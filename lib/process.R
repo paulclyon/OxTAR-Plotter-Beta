@@ -142,9 +142,9 @@ processData <- function() {
       ptForRx <- getDataEntry(paste("ref_intention_rx_", as.integer(iRef), sep = ""), i)
       ptOffPathway <- getDataEntry(paste("ref_off_rx_pathway_", as.integer(iRef), sep = ""), i)
       
-      # We used to have this but actually it means we miss treatments for which referral data is missing in the plots etc... hence commented out
       # Only continue if the patient is for treatment and is not off the pathway
-      #if (!is.na(ptForRx) & ptForRx == "1" & !is.na(ptOffPathway) & ptOffPathway == "0")
+      # (or if these things haven't been filled out and are NA so we can fix missing data using the plot)
+      if ( (is.na(ptForRx) | ptForRx == "1") & (is.na(ptOffPathway) | ptOffPathway != "1"))
       {
         org <- getDataEntry(paste("ref_organ_", as.integer(iRef), sep = ""), i)
         organForRx = NA
