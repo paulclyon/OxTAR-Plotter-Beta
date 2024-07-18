@@ -10,9 +10,12 @@ Cd shiny
 
 To upload updates of OxTAR to GitHub :
 =================================================
+Use GitHub Desktop which is really good
+It tells you what files have changed - you need to commit to main with a description on what changed
 Log into GitHub webpage and use Authenticator App code to get in
-Click on OxTAR_Plotter
-Create new release
-Label e.g. 0.74
+Click on OxTAR-Plotter-Beta
+Draft a new release
+Tag e.g. 0.74b
+Release title = animal name e.g. Lion
+Publish Release
 
-Can't figures out how to create a new release yet...
