@@ -494,38 +494,9 @@ processData <- function() {
     rxWaitData <<- NA
   }
   
-  # Here Time is the status is 0=alive, 1=censored, 2=dead, survival time in days (since first Rx)
-  survivalData <<- data.frame(
-    ID = survival_pt_list,
-    Sex = survival_sex_list,
-    Age = survival_age_list,
-    Organ = survival_organ_list,
-    Status = survival_status_list,
-    FirstRxDate = asDateWithOrigin(survival_first_rx_date),
-    Deceased = survival_deceased_list,
-    DeceasedDate = asDateWithOrigin(survival_deceased_date),
-    Time = survival_days_list,
-    Related = survival_deceased_related,
-    LostToFU = survival_lost_to_fu,
-    LostToFUDate = asDateWithOrigin(survival_lost_to_fu_date)
-  )
-  
-  # The recurrence stuff can also borrow some columns from the survival data...
-  recurrenceData <<- data.frame(
-    ID = survival_pt_list,
-    Sex = survival_sex_list,
-    Age = survival_age_list,
-    Organ = survival_organ_list,
-    Status = NA,
-    FirstRxDate = asDateWithOrigin(survival_first_rx_date),
-    LocalRecurrence = local_recurrence_list,
-    FirstLocalRecurrenceDate = local_recurrence_date_list,
-    Time = local_recurrence_days_list
-  )
-  
   # This is just a list the different organ targets which have been referred or treated
   organFactors <<- levels(factor(append(rxdone_organ_list, rxwait_organ_list)))
-
+  
   # Similarly for operators
   operator1Factors       <<- c("ALL",levels(factor(rxdone_operator1_list)))
   operator2Factors       <<- c("ALL",levels(factor(rxdone_operator2_list)))
@@ -536,22 +507,131 @@ processData <- function() {
   anaesthetist3Factors   <<- c("ALL",levels(factor(rxdone_anaesthetist3_list)))
   anaesthetistAllFactors <<- c(levels(factor(append(append(rxdone_anaesthetist1_list,rxdone_anaesthetist2_list),rxdone_anaesthetist3_list))))
   
-  #survivalFit         <- survfit(Surv(Time, Status)~1, data=survivalData)
-  survivalFitSex      <<- survfit(Surv(Time, Status) ~ Sex, data = survivalData)
-  survivalFitOrgan    <<- survfit(Surv(Time, Status) ~ Organ, data = survivalData)
-  #recurrenceFitOrgan <<- survfit(Surv(Time, Status)~Organ, data=recurrenceData)
+  # Here Time is the status is 0=alive, 1=censored, 2=dead, survival time in days (since first Rx)
+  if (length(survival_pt_list)==0)
+  {
+    survivalData <<- NA
+    survivalFitSex <<- NA
+    survivalFitOrgan <<- NA
+    survivalPlotOrgan <<- NA
+    survivalPlotSex <<- NA
+  }
+  else
+  {
+    survivalData <<- data.frame(
+      ID = survival_pt_list,
+      Sex = survival_sex_list,
+      Age = survival_age_list,
+      Organ = survival_organ_list,
+      Status = survival_status_list,
+      FirstRxDate = asDateWithOrigin(survival_first_rx_date),
+      Deceased = survival_deceased_list,
+      DeceasedDate = asDateWithOrigin(survival_deceased_date),
+      Time = survival_days_list,
+      Related = survival_deceased_related,
+      LostToFU = survival_lost_to_fu,
+      LostToFUDate = asDateWithOrigin(survival_lost_to_fu_date)
+    )
+    
+    #survivalFit         <- survfit(Surv(Time, Status)~1, data=survivalData)
+    survivalFitSex      <<- survfit(Surv(Time, Status) ~ Sex, data = survivalData)
+    survivalFitOrgan    <<- survfit(Surv(Time, Status) ~ Organ, data = survivalData)
+    #summary(survivalFit)
+    survivalPlotOrgan   <<- ggsurvplot(survivalFitOrgan,
+                                       xlab = "Time (Days)",
+                                       ggtheme = theme(plot.title = element_text(hjust = 0.5)))
+    
+    survivalPlotSex     <<- ggsurvplot(survivalFitSex,
+                                       xlab = "Time (Days)",
+                                       ggtheme = theme(plot.title = element_text(hjust = 0.5)))
+    
+  }
   
-  #summary(survivalFit)
-  survivalPlotOrgan   <<- ggsurvplot(survivalFitOrgan,
-                                     xlab = "Time (Days)",
-                                     ggtheme = theme(plot.title = element_text(hjust = 0.5)))
-  
-  survivalPlotSex     <<- ggsurvplot(survivalFitSex,
-                                     xlab = "Time (Days)",
-                                     ggtheme = theme(plot.title = element_text(hjust = 0.5)))
-  
-  #recurrencePlotOrgan <<- ggsurvplot(recurrenceFitOrgan,xlab="Follow-up Time (Days)",ggtheme=theme(plot.title=element_text(hjust=0.5)))
-  
-  recurrencePlotOrgan <<- NA
+  # The recurrence stuff can also borrow some columns from the survival data...
+  if (length(survival_pt_list)==0)
+  {
+    recurrenceData <<- NA
+    recurrencePlotOrgan <<- NA
+  }
+  else
+  {
+    recurrenceData <<- data.frame(
+      ID = survival_pt_list,
+      Sex = survival_sex_list,
+      Age = survival_age_list,
+      Organ = survival_organ_list,
+      Status = NA,
+      FirstRxDate = asDateWithOrigin(survival_first_rx_date),
+      LocalRecurrence = local_recurrence_list,
+      FirstLocalRecurrenceDate = local_recurrence_date_list,
+      Time = local_recurrence_days_list
+    )
+
+    #recurrenceFitOrgan <<- survfit(Surv(Time, Status)~Organ, data=recurrenceData)
+    #recurrencePlotOrgan <<- ggsurvplot(recurrenceFitOrgan,xlab="Follow-up Time (Days)",ggtheme=theme(plot.title=element_text(hjust=0.5)))
+    recurrencePlotOrgan <<- NA
+  }
+}
+
+# This is a useful function to change variations of anaesthetists names to a single common identifier
+# e.g. Joe_Bloggs, Joe, Mr. Bloggs > JBloggs
+updateAnaesthetistNames <- function(studyID, oldNames, newName)
+{
+  # Iterate through patient records one by one to find the matching names...
+  for (i in 1:nrow(patientData))
+  {
+    ptID <- patientData[["id"]][i]
+    
+    pt_rx_count  <- getDataEntry("pt_rx_count", i)
+    if (!is.na(pt_rx_count) && pt_rx_count >0 )
+    {
+      for (iRx in 1:pt_rx_count)
+      {
+        # Go through each of the primary, secondary and tertiary anaesthetists
+        for (no in 1:3)
+        {
+          fieldName = paste("anaes_anaesthetist",no,"o_", as.integer(iRx), sep = "")
+          anaesthetistString <- tolower(getDataEntry(fieldName, i))
+          if (!is.na(anaesthetistString) && anaesthetistString %in% oldNames)
+          {
+            logger(paste("** Attempting to replace patientID=",ptID," record ",i,"/",nrow(patientData), " '",anaesthetistString, "' with '",newName,"'", sep=""))
+            setDataEntry(studyID, ptID, i, fieldName, newName)
+            logger(paste("** Completed replacing patientID=",ptID," record ",i,"/",nrow(patientData), " '",anaesthetistString, "' with '",newName,"'", sep=""))
+          }
+        }
+      }
+    }
+  }
+}
+
+# This is a useful function to change variations of operator names to a single common identifier
+# e.g. Joe_Bloggs, Joe, Mr. Bloggs > JBloggs
+updateOperatorNames <- function(studyID, oldNames, newName)
+{
+  # Iterate through patient records one by one to find the matching names...
+  for (i in 1:nrow(patientData))
+  {
+    ptID <- patientData[["id"]][i]
+    
+    pt_rx_count  <- getDataEntry("pt_rx_count", i)
+    if (!is.na(pt_rx_count) && pt_rx_count >0 )
+    {
+      for (iRx in 1:pt_rx_count)
+      {
+        # Go through each of the primary, secondary and tertiary operators
+        for (no in 1:3)
+        {
+          fieldName = paste("rx_operator",no,"o_", as.integer(iRx), sep = "")
+          operatorString <- tolower(getDataEntry(fieldName, i))
+          if (!is.na(operatorString) && operatorString %in% oldNames)
+          {
+            logger(paste("** Attempting to replace patientID=",ptID," record ",i,"/",nrow(patientData), " '",operatorString, "' with '",newName,"'", sep=""))
+            setDataEntry(studyID, ptID, i, fieldName, newName)
+            logger(paste("** Completed replacing patientID=",ptID," record ",i,"/",nrow(patientData), " '",operatorString, "' with '",newName,"'", sep=""))
+          }
+        }
+      }
+    }
+  }
 }
 

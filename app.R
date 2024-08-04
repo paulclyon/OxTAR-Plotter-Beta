@@ -1,9 +1,14 @@
 # Install the required packages if not already installed
 required_pkgs <- c(
   "remotes",
+  "httr",
+  "rapiclient",
+  "dplyr",
+  "jsonlite",
   "shiny",
   "shinyjs",
   "shinydashboard",
+  "shinyalert",
   "spsComps",
   "markdown",
   "DT",
@@ -69,13 +74,15 @@ if (file.exists("userkey.txt")) {
 rmdAuditFiles <- c(Sys.getenv("AUDIT_PATHWAY_RMD"))
 
 # This should be outside of initialiseGlobals otherwise its always going to be empty at processing
-castor_api <<- new.env()
+castor_api      <<- new.env()
 
 # Initialise these global variable as required to render to UI
-organFactors         <<- c()
-operator1Factors     <<- c()
-anaesthetist1Factors <<- c()
-studyNames           <<- c()
+organFactors           <<- c()
+operator1Factors       <<- c()
+anaesthetist1Factors   <<- c()
+operatorAllFactors     <<- c()
+anaesthetistAllFactors <<- c()
+studyNames             <<- c()
 
 theme <- bslib::bs_theme(version = 4)
 
@@ -110,6 +117,16 @@ ui <- dashboardPage(
         menuSubItem("Pathway Table",    tabName = "rxpathwaytab"),
         menuSubItem("Recurrence Table", tabName = "recurrencetab"),
         menuSubItem("Survival Table",   tabName = "survivaltab")
+      ),
+      
+      menuItem(
+        "Data Validation",
+        id = "validationID",
+        tabName = "validation",
+        icon = icon("table"),
+        expandedName = "VALIDATION",
+        menuSubItem("Operator Names",      tabName = "operatorNames"),
+        menuSubItem("Anaesthetists Names", tabName = "anaesthetistNames")
       ),
       
       menuItem(
@@ -270,12 +287,12 @@ ui <- dashboardPage(
                   column(
                     width = 6,
                     selectInput(
-                      "operatorPlotCheckbox",
+                      "operatorPlotDropdown",
                       "Operators to Plot",
                       choices = operator1Factors
                     ),
                     selectInput(
-                      "anaesthetistPlotCheckbox",
+                      "anaesthetistPlotDropdown",
                       "Anaesthetists to Plot",
                       choices = anaesthetist1Factors
                     ),
@@ -493,7 +510,77 @@ ui <- dashboardPage(
       tabItem(tabName = "about",
               fluidRow(column(
                 12, uiOutput('about')
-              )))
+              ))),
+      
+      tabItem(tabName = "operatorNames",
+              fluidRow(
+                tabPanel(
+                  "OperatorsNames",
+                  column(
+                    width = 5,
+                    checkboxGroupInput(
+                      "operatorNameCheckbox",
+                      "Select the variations of same Operator name for name change:",
+                      choices = operatorAllFactors
+                    )),
+                  column(
+                    width = 5,
+                    textInput(
+                      "operatorsNewName",
+                      "Operators's New Name (e.g. Surname 'Smith'):"
+                    ),
+                    box(
+                      title = "Rename Warning", width = NULL, solidHeader = TRUE, status = "warning",
+                      "Warning! This cannot be reversed; ensure you really want to do this and have selected correctly before clicking\n"
+                    ),
+                    actionButton(inputId = "updateOperatorNames", label = "!!",
+                                 style = "color: white; 
+                       background-color: #EE4B2B; 
+                       position: relative; 
+                       left: 3%;
+                       height: 35px;
+                       width: 35px;
+                       text-align:center"
+                    )
+                  )
+                )
+              )
+      ),
+      
+      tabItem(tabName = "anaesthetistNames",
+              fluidRow(
+                tabPanel(
+                  "AnaesthetistsNames",
+                  column(
+                    width = 5,
+                    checkboxGroupInput(
+                      "anaesthetistNameCheckbox",
+                      "Select the variations of same Anaesthetist name for name change:",
+                      choices = anaesthetistAllFactors
+                    )),
+                  column(
+                    width = 5,
+                    textInput(
+                      "anaesthetistNewName",
+                      "Anaesthetist New Name (e.g. Surname 'Smith'):"
+                    ),
+                    box(
+                      title = "Rename Warning", width = NULL, solidHeader = TRUE, status = "warning",
+                      "Warning! This cannot be reversed; ensure you really want to do this and have selected correctly before clicking\n"
+                    ),
+                    actionButton(inputId = "updateAnaesthetistNames", label = "!!",
+                       style = "color: white; 
+                       background-color: #EE4B2B; 
+                       position: relative; 
+                       left: 3%;
+                       height: 35px;
+                       width: 35px;
+                       text-align:center"
+                    )
+                  )
+                )
+              )
+            )
     )
   )
 )
@@ -689,13 +776,13 @@ server <- function(input, output, session) {
   # Note plotly vs. plot gives you the tool tip text
   output$plotOperators <- renderPlotly({
     filteredRxDoneData <- rxDoneData
-    if (input$operatorPlotCheckbox != 'ALL')
+    if (input$operatorPlotDropdown != 'ALL')
     {
-      filteredRxDoneData <- filteredRxDoneData %>% filter(Operator1 %in% input$operatorPlotCheckbox)
+      filteredRxDoneData <- filteredRxDoneData %>% filter(Operator1 %in% input$operatorPlotDropdown)
     }
-    if (input$anaesthetistPlotCheckbox != 'ALL')
+    if (input$anaesthetistPlotDropdown != 'ALL')
     {
-      filteredRxDoneData <- filteredRxDoneData %>% filter(Anaesthetist1 %in% input$anaesthetistPlotCheckbox)
+      filteredRxDoneData <- filteredRxDoneData %>% filter(Anaesthetist1 %in% input$anaesthetistPlotDropdown)
     }
     p <- finalOperatorPlotInput()
     p <- p %+% subset(filteredRxDoneData)
@@ -795,14 +882,14 @@ server <- function(input, output, session) {
     if (length(castor_api) != 0)
     {
       api$connected = T
-      showNotification("API Connected.")
+      showNotification("Castor API Connected.")
     }
   })
   observeEvent(input$disconnectAPI, {
     disconnectCastorAPI()
     api$connected = F
     api$loaded = F
-    showNotification("API Disconnected.")
+    showNotification("Castor API Disconnected.")
   })
   observeEvent(input$reloadData, {
     if (length(castor_api) != 0)
@@ -844,18 +931,28 @@ server <- function(input, output, session) {
         
         updateSelectInput(
           session,
-          "operatorPlotCheckbox",
+          "operatorPlotDropdown",
           "Operators to Plot",
           choices = operator1Factors
         )
-        
         updateSelectInput(
           session,
-          "anaesthetistPlotCheckbox",
+          "anaesthetistPlotDropdown",
           "Anaesthetists to Plot",
           choices = anaesthetist1Factors
         )
-        
+        updateCheckboxGroupInput(
+          session,
+          "operatorNameCheckbox",
+          "Operator Names",
+          choices = operatorAllFactors
+        )
+        updateCheckboxGroupInput(
+          session,
+          "anaesthetistNameCheckbox",
+          "Anaesthetist Names",
+          choices = anaesthetistAllFactors
+        )
         updateCheckboxGroupInput(
           session,
           "organPieCheckbox",
@@ -905,6 +1002,7 @@ server <- function(input, output, session) {
     logger("rx plot refresh")
     plots$activePlot <- NA
   })
+  
   observeEvent(input$refreshOperatorPlot, {
     logger(operator1Factors)
     logger(anaesthetist1Factors)
@@ -922,6 +1020,114 @@ server <- function(input, output, session) {
     logger("y3")
     plots$activePlot <- NA
   })
+  observeEvent(input$updateAnaesthetistNames, {
+    updateAnaesthetistNames(input$anaesthetistNameCheckbox,
+      input$anaesthetistNewName)
+    
+    if (length(input$anaesthetistNameCheckbox)==0)
+    {
+      shinyCatch({
+        message("No anaesthetists selected to update")
+      }, prefix = '')
+    }
+    else if(is.na(input$anaesthetistNewName) || input$anaesthetistNewName == "")
+    {
+      shinyCatch({
+        message("No new anaesthetist name input to update to")
+      }, prefix = '')
+    }
+    else
+    {
+      warningString = paste("Warning: You are about to update anaesthetists names '",input$anaesthetistNameCheckbox,"' to '",input$anaesthetistNewName,"'. This change is not reversible. You must use unique name otherwise your data will be diluted. To proceed with the change type: 'Proceed' (case-sensitive) otherwise press Esc.",sep="")
+      shinyalert(
+        warningString, type = "input",
+        callbackR = updateAnaesthetistNamesCallback,
+        showCancelButton = TRUE
+      )
+    }
+  })
+  
+  # This is the callback to ensure we are definately going to update the anaesthetist data
+  updateAnaesthetistNamesCallback <- function(textEntered)
+  {
+    if (!is.na(textEntered) && textEntered == 'Proceed')
+    {
+      # Create a Progress object
+      progress <- shiny::Progress$new()
+      progress$set(message = "Updating Castor Data...", value = 0.5)
+      
+      # Close the progress when this reactive exits (even if there's an error)
+      on.exit(progress$close())
+      
+      updateAnaesthetistNames(oxtarStudyID,
+                          input$anaesthetistNameCheckbox,
+                          input$anaesthetistNewName)
+      
+      progress$set(message = "Completed Data Update", value = 1.0)
+    }
+    else
+    {
+      if (is.na(textEntered))
+      {
+        textEntered <- ""
+      }
+      # Do nothing
+      logger(paste("The anaesthetists were not updated as the user typed '",textEntered,"'",sep=""))
+    }
+  }
+  
+  observeEvent(input$updateOperatorNames, {
+    if (length(input$operatorNameCheckbox)==0)
+    {
+      shinyCatch({
+        message("No operators selected to update")
+      }, prefix = '')
+    }
+    else if(is.na(input$operatorsNewName) || input$operatorsNewName == "")
+    {
+      shinyCatch({
+        message("No new operator name input to update to")
+      }, prefix = '')
+    }
+    else
+    {
+      warningString = paste("Warning: You are about to update operator names '",input$operatorNameCheckbox,"' to '",input$operatorsNewName,"'. This change is not reversible. You must use unique name otherwise your data will be diluted. To proceed with the change type: 'Proceed' (case-sensitive) otherwise press Esc.",sep="")
+      shinyalert(
+        warningString, type = "input",
+        callbackR = updateOperatorNamesCallback,
+        showCancelButton = TRUE
+      )
+    }
+  })
+  
+  # This is the callback to ensure we are definately going to update the operator data
+  updateOperatorNamesCallback <- function(textEntered)
+  {
+    if (!is.na(textEntered) && textEntered == 'Proceed')
+    {
+      # Create a Progress object
+      progress <- shiny::Progress$new()
+      progress$set(message = "Updating Castor Data...", value = 0.5)
+      
+      # Close the progress when this reactive exits (even if there's an error)
+      on.exit(progress$close())
+      
+      updateOperatorNames(oxtarStudyID,
+                          input$operatorNameCheckbox,
+                          input$operatorsNewName)
+      
+      progress$set(message = "Completed Data Update", value = 1.0)
+    }
+    else
+    {
+      if (is.na(textEntered))
+      {
+        textEntered <- ""
+      }
+      # Do nothing
+      logger(paste("The operators were not updated as the user typed '",textEntered,"'",sep=""))
+    }
+  }
   
   observeEvent(input$runAuditReport, {
     logger(paste("Running audit for dates: ", input$auditDate1,"-", input$auditDate2, sep=""))

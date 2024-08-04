@@ -1,21 +1,30 @@
-To upload updates of OxTAR to Bianchi :
-=================================================
-Copy files to bianchi/shiny/updates folder
-Might want to put whole lib/ or www/ dir in there
-
-Then from the rocker-shiny-verse1 go to Terminal
-Start a bash
-Cd shiny
-./installUpdates
-
 To upload updates of OxTAR to GitHub :
 =================================================
 Use GitHub Desktop which is really good
 It tells you what files have changed - you need to commit to main with a description on what changed
-Log into GitHub webpage and use Authenticator App code to get in
+Then push to GitHub
+Via the GitHub app Open the repository page on your browser
+Log into GitHub webpage and use Authenticator App code to get in e.g. FaceID etc
+
+From the GitHub Web Page
 Click on OxTAR-Plotter-Beta
 Draft a new release
 Tag e.g. 0.74b
 Release title = animal name e.g. Lion
 Publish Release
+
+
+To upload updates of OxTAR to Bianchi :
+=================================================
+Copy files to bianchi/docker/shiny/updates folder
+Might want to put whole lib/ or www/ dir in there
+
+Get into Bianchi DSM
+Click on Docker from the packages
+Container > rocker-shiny-verse1 > Terminal > bash
+Cd shiny
+./installUpdates
+
+http://ouhradwiki.com/oxtar
+
 

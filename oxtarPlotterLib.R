@@ -105,7 +105,7 @@ makeRxPathwayPlots <- function()
   
 makeRxPathwayPies <- function(inputStartDate, inputEndDate, inputOrganList)
 {
-  startDate=as.Date(inputStartDate, )
+  startDate=as.Date(inputStartDate, format = "%d/%m/%Y")
   endDate=as.Date(inputEndDate, format = "%d/%m/%Y")
   
   logger(paste("FIXME: Need to filter the audit report to get it from ",startDate,endDate))
@@ -159,4 +159,5 @@ makeRxPathwayPies <- function(inputStartDate, inputEndDate, inputOrganList)
     theme_void()
 }
 
-  
+
+

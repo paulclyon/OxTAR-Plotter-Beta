@@ -1,6 +1,6 @@
 # reloadStudyData.R - functions to load/reload study data from Castor
 # 
-# The castorApi global needs to be present and set
+# The castor_api and castor_open_api globals needs to be present and set (castorAPI.R)
 
 
 # Return an array of study name strings
@@ -14,7 +14,6 @@ getStudyNames <- function()
   studies <- castor_api$getStudies()
   studies$name
 }
-
 
 
 # Find study by name and return index of it, if not found return 0
@@ -34,11 +33,13 @@ findStudyIndex <- function(studies, studyName, stopIfNotFound=F) {
   return(index)
 }
 
-getPatientData <- function(studyID) {
-  patientData <- (studyID)
-  return(patientData)
-}
+# FIXME - not sure this function is correct or indeed is ever called?
+#getPatientData <- function(studyID) {
+#  patientData <- (studyID)
+#  return(patientData)
+#}
 
+# The basic (and slow!) Castor EDC method to get the data as a data.frame which comes with metadata and field names
 getStudyData <- function(studyID) {
   studyData <- castor_api$getStudyData(studyID)
   return(studyData)
@@ -52,12 +53,10 @@ getStudyName <- function(id)
     return(NA)
   }
   studies <- castor_api$getStudies()
-  
   index <- which(studies$study_id == id)
   if (length(index) == 0) {
     return(NA)
   }
-  
   return(studies$name[[index]])
 }
 
@@ -80,6 +79,14 @@ pullStudyData <- function (studyID) {
   return(studyData)
 }
 
+# Pull in the study data via Open API...
+pullStudyDataOpenAPI <- function (studyID) {
+  studyName = getStudyName(studyID)
+  logger(paste("Loading study data via Open API for study ID '", studyID,"' (",studyName,")...",sep=""))
+  studyDataOpenAPI <- getStudyDataOpenAPI(studyID)
+  logger(paste("Study data loaded successfully via Open API"))
+  return(studyDataOpenAPI)
+}
 
 # reloadStudyData interrogates castor to load the study data.
 # It sets the global values:
@@ -107,9 +114,9 @@ reloadStudyData <- function(studyName)
   }
   
   # Pull in the data for the OxTAR study
-  oxtar_study_id   <- studies[["study_id"]][studyIndex]
+  oxtarStudyID     <<- studies[["study_id"]][studyIndex]
   oxtar_study_name <- studies[["name"]][studyIndex]
-  patientData      <<- pullPatientData(oxtar_study_id)
-  studyData        <<- pullStudyData(oxtar_study_id)
+  patientData      <<- pullPatientData(oxtarStudyID)
+  studyData        <<- pullStudyData(oxtarStudyID)
 }
 

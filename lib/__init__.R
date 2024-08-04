@@ -108,6 +108,12 @@ initialiseGlobals <- function() {
   survivalPlotOrgan            <<- ggplot()
   survivalFitSex               <<- NA
   survivalFitOrgan             <<- NA
+  oxtarStudyID                 <<- NA
+  # The Open API stuff is used to write to Castor...
+  castorOpenAPI                <<- NA
+  studyDataOpenAPI             <<- NA
+  openAPIoperations            <<- NA
+  openAPIschemas               <<- NA
   
   logger("System information:")
   logger(Sys.info(), TRUE)
