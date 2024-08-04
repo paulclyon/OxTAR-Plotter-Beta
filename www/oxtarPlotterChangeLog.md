@@ -21,3 +21,4 @@ V0.71  Added Provisional Treatment Date<br>
 V0.72  Fixed JSON bug with empty matrix (when not NA)<br>
 V0.73  Improved debug output logs for referral analysis<br>
 V0.74  Added the Operators Logbook<br>
+V0.75  Added write function using OpenAPI (update operators/anaesthetist names)
