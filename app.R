@@ -1038,7 +1038,7 @@ server <- function(input, output, session) {
     }
     else
     {
-      warningString = paste("Warning: You are about to update anaesthetists names '",input$anaesthetistNameCheckbox,"' to '",input$anaesthetistNewName,"'. This change is not reversible. You must use unique name otherwise your data will be diluted. To proceed with the change type: 'Proceed' (case-sensitive) otherwise press Esc.",sep="")
+      warningString = paste("Warning: You are about to update anaesthetists names '",paste(input$anaesthetistNameCheckbox,collapse=','),"' to '",input$anaesthetistNewName,"'. This change is not reversible. You must use unique name otherwise your data will be diluted. To proceed with the change type: 'Proceed' (case-sensitive) otherwise press Esc.",sep="")
       shinyalert(
         warningString, type = "input",
         callbackR = updateAnaesthetistNamesCallback,
@@ -1091,7 +1091,7 @@ server <- function(input, output, session) {
     }
     else
     {
-      warningString = paste("Warning: You are about to update operator names '",input$operatorNameCheckbox,"' to '",input$operatorsNewName,"'. This change is not reversible. You must use unique name otherwise your data will be diluted. To proceed with the change type: 'Proceed' (case-sensitive) otherwise press Esc.",sep="")
+      warningString = paste("Warning: You are about to update operator names '",paste(input$operatorNameCheckbox,collapse=','),"' to '",input$operatorsNewName,"'. This change is not reversible. You must use unique name otherwise your data will be diluted. To proceed with the change type: 'Proceed' (case-sensitive) otherwise press Esc.",sep="")
       shinyalert(
         warningString, type = "input",
         callbackR = updateOperatorNamesCallback,

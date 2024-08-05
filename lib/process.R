@@ -285,6 +285,10 @@ processData <- function() {
             {
               ref_dtt_date <- ref_rx_date
               ref_dtt_days <- as.numeric(difftime(ref_dtt_date, ref_date, units = "days"), units = "days")
+              if (ref_dtt_days < 0)
+              {
+                logger(paste(i, "/", nrow(patientData), " Pt=", ptID, " **Data integrity issue**: patient's decision to treat date is before referral date.", sep = ""))
+              }
             }
             
             ptRefTreated = T
@@ -309,6 +313,10 @@ processData <- function() {
             anaesthetistString3[anaesthetistString3 == ''] <- NA
             
             ref_rx_days = as.numeric(difftime(ref_rx_date, ref_date, units = "days"), units = "days")
+            if (ref_rx_days < 0)
+            {
+              logger(paste(i, "/", nrow(patientData), " Pt=", ptID, " **Data integrity issue**: patient's treatment date is before referral date.", sep = ""))
+            }
             
             # Correct for clockstop
             if (!is.na(clockstoppedDaysPreDTT)) {
